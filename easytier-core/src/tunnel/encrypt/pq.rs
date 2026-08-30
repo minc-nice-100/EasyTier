@@ -26,7 +26,8 @@ use sha2::Sha256;
 
 #[cfg(feature = "post-quantum")]
 use ml_kem::{
-    Decapsulate, Encapsulate, EncapsulationKey, KeyExport, MlKem768, TryKeyInit,
+    Decapsulate, Encapsulate, EncapsulationKey, Key, KeyExport, Kem, MlKem768, TryKeyInit,
+    array::Array,
 };
 
 /// ML-KEM-768 encapsulation (public) key length in bytes.
@@ -131,12 +132,15 @@ impl PqOffer {
 pub fn encapsulate(ek_bytes: &[u8]) -> Option<(Vec<u8>, [u8; MLKEM_SHARED_SECRET_LEN])> {
     #[cfg(feature = "post-quantum")]
     {
-        let key = <EncapsulationKey<MlKem768> as KeyExport>::from_slice(ek_bytes).ok()?;
+        if ek_bytes.len() != MLKEM_PUBKEY_LEN {
+            return None;
+        }
+        let key: Key<EncapsulationKey<MlKem768>> = Array::from_slice(ek_bytes).clone();
         let ek = EncapsulationKey::new(&key).ok()?;
         let (ciphertext, shared) = ek.encapsulate();
         let mut out = [0u8; MLKEM_SHARED_SECRET_LEN];
         out.copy_from_slice(&shared);
-        return Some((ciphertext.to_bytes().to_vec(), out));
+        return Some((ciphertext.as_slice().to_vec(), out));
     }
     #[cfg(not(feature = "post-quantum"))]
     {
