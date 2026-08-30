@@ -79,7 +79,6 @@ impl PqKeypair {
 pub enum PqOffer {
     #[cfg(feature = "post-quantum")]
     Pq(PqKeypair),
-    #[cfg(not(feature = "post-quantum"))]
     Unavailable,
 }
 
