@@ -191,6 +191,9 @@ core_clap:
   disable_upnp:
     en: "disable runtime UPnP/NAT-PMP port mapping for eligible listeners; automatic port mapping is enabled by default"
     zh-CN: "禁用符合条件监听器的运行时 UPnP/NAT-PMP 端口映射；自动端口映射默认开启"
+  enable_post_quantum:
+    en: "enable hybrid post-quantum (ML-KEM-768) key encapsulation for new peer connection sessions; transparent to peers that do not advertise the capability"
+    zh-CN: "为新的对等连接会话启用混合后量子 (ML-KEM-768) 密钥封装；对不支持该能力的对等节点透明兼容"
   enable_udp_broadcast_relay:
     en: "Windows only: capture local UDP broadcast packets from physical interfaces and forward them to EasyTier peers. Helps games to find rooms in local network. Requires administrator privileges."
     zh-CN: "仅 Windows：捕获物理网卡上的本机 UDP 广播包并转发给 EasyTier 对等节点，帮助局域网游戏发现房间。需要管理员权限。"
