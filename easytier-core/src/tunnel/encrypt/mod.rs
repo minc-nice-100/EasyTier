@@ -20,7 +20,6 @@ mod ring;
 #[cfg(all(target_os = "wasi", feature = "wasi-crypto-offload"))]
 mod wasi_host;
 
-#[cfg(feature = "post-quantum")]
 pub mod pq;
 pub mod xor;
 
