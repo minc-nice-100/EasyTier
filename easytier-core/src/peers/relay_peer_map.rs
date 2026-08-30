@@ -24,6 +24,9 @@ use crate::{
     proto::peer_rpc::RoutePeerInfo,
     proto::peer_rpc::{PeerConnSessionActionPb, RelayNoiseMsg1Pb, RelayNoiseMsg2Pb},
 };
+use crate::tunnel::encrypt::pq::{
+    MLKEM_CIPHERTEXT_LEN, MLKEM_PUBKEY_LEN, PqOffer, encapsulate, hybrid_root_key,
+};
 
 const RELAY_NOISE_VERSION: u32 = 1;
 const RELAY_NOISE_PROLOGUE: &[u8] = b"easytier-relay-noise";
@@ -400,11 +403,13 @@ impl RelayPeerMap {
             .get(&session_key)
             .map(|s| s.session_generation());
         let a_conn_id = uuid::Uuid::new_v4();
+        let pq_offer = PqOffer::offer(self.context.flags().enable_post_quantum);
         let msg1_pb = RelayNoiseMsg1Pb {
             version: RELAY_NOISE_VERSION,
             a_session_generation,
             a_conn_id: Some(a_conn_id.into()),
             client_encryption_algorithm: self.context.flags().encryption_algorithm,
+            mlkem_pubkey: pq_offer.pubkey_bytes(),
         };
         let payload = msg1_pb.encode_to_vec();
         let mut out = vec![0u8; 4096];
@@ -478,6 +483,25 @@ impl RelayPeerMap {
                 key_bytes
             });
         let algo = self.context.flags().encryption_algorithm;
+        let pq_shared = msg2_pb.mlkem_ciphertext.as_deref().and_then(|ct| {
+            if ct.len() != MLKEM_CIPHERTEXT_LEN {
+                tracing::warn!(len = ct.len(), "ignoring invalid ML-KEM ciphertext length");
+                None
+            } else {
+                pq_offer.open(ct)
+            }
+        });
+        if pq_shared.is_some() {
+            tracing::info!(?dst_peer_id, "hybrid post-quantum relay session established");
+        }
+        let root_key_bytes = if session_action == PeerSessionAction::Create {
+            root_key_bytes.map(|rk| match pq_shared {
+                Some(shared) => hybrid_root_key(rk, &shared),
+                None => rk,
+            })
+        } else {
+            root_key_bytes
+        };
         let session = self
             .peer_session_store
             .apply_initiator_action(
@@ -636,6 +660,15 @@ impl RelayPeerMap {
         let server_network_name = self.context.network_name();
         let algo = self.context.flags().encryption_algorithm;
         let key = SessionKey::new(server_network_name.clone(), remote_peer_id);
+        let pq_shared = msg1_pb.mlkem_pubkey.as_deref().and_then(|ek_bytes| {
+            if ek_bytes.len() != MLKEM_PUBKEY_LEN {
+                tracing::warn!(len = ek_bytes.len(), "ignoring invalid ML-KEM pubkey length");
+                None
+            } else {
+                encapsulate(ek_bytes)
+            }
+        });
+        let pq_ciphertext = pq_shared.as_ref().map(|(ciphertext, _)| ciphertext.clone());
         let upsert = self
             .peer_session_store
             .upsert_responder_session(
@@ -646,6 +679,23 @@ impl RelayPeerMap {
                 remote_static_key,
             )
             .map_err(|e| Error::RouteError(Some(format!("{e:?}"))))?;
+
+        // Apply the hybrid post-quantum mix to freshly created sessions. The
+        // unmodified root key is still transmitted so the initiator can derive
+        // the same mixed session key locally from its own decapsulation.
+        if matches!(upsert.action, PeerSessionAction::Create)
+            && let (Some(pq_shared), Some(root_key)) = (
+                pq_shared.as_ref().map(|(_, shared)| shared),
+                upsert.root_key,
+            )
+        {
+            let mixed = hybrid_root_key(root_key, pq_shared);
+            tracing::info!(?remote_peer_id, "hybrid post-quantum relay session established");
+            upsert
+                .session
+                .sync_root_key(mixed, upsert.session_generation, upsert.initial_epoch, true);
+        }
+
         let msg2_pb = RelayNoiseMsg2Pb {
             action: match upsert.action {
                 PeerSessionAction::Join => PeerConnSessionActionPb::Join as i32,
@@ -658,6 +708,7 @@ impl RelayPeerMap {
             b_conn_id: Some(uuid::Uuid::new_v4().into()),
             a_conn_id_echo: msg1_pb.a_conn_id,
             server_encryption_algorithm: algo,
+            mlkem_ciphertext: pq_ciphertext,
         };
         let payload = msg2_pb.encode_to_vec();
         let mut out = vec![0u8; 4096];

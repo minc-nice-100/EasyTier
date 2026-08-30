@@ -59,6 +59,7 @@ use crate::{
         stats::{Throughput, WindowLatency},
     },
 };
+use crate::tunnel::encrypt::pq::{MLKEM_SHARED_SECRET_LEN, PqOffer, encapsulate, hybrid_root_key};
 
 pub type PeerConnId = uuid::Uuid;
 
@@ -776,6 +777,34 @@ impl PeerConn {
         }
     }
 
+    /// Whether this node is configured to establish hybrid post-quantum peer
+    /// sessions. Requires both the runtime flag and a build that compiles the
+    /// ML-KEM engine.
+    fn post_quantum_enabled(&self) -> bool {
+        self.context.flags().enable_post_quantum
+    }
+
+    /// Generates the initiator's ML-KEM offer when this node is configured for
+    /// hybrid post-quantum sessions. The decapsulation key is retained inside
+    /// the offer so it can open the responder's ciphertext later in the same
+    /// handshake.
+    fn pq_offer_keypair(&self) -> PqOffer {
+        PqOffer::offer(self.post_quantum_enabled())
+    }
+
+    /// Mixes an ML-KEM shared secret into a new session root key. Only applied
+    /// to freshly created sessions; existing sessions keep their established
+    /// key.
+    fn pq_mixed_root_key(
+        root_key: [u8; 32],
+        pq_shared: Option<&[u8; MLKEM_SHARED_SECRET_LEN]>,
+    ) -> [u8; 32] {
+        match pq_shared {
+            Some(shared) => hybrid_root_key(root_key, shared),
+            None => root_key,
+        }
+    }
+
     async fn do_noise_handshake_as_client(&self) -> Result<NoiseHandshakeResult, Error> {
         let prologue = b"easytier-peerconn-noise".to_vec();
 
@@ -801,6 +830,7 @@ impl PeerConn {
             .map(|s| s.session_generation());
 
         let a_conn_id = uuid::Uuid::new_v4();
+        let pq_keypair = self.pq_offer_keypair();
         let msg1_pb = PeerConnNoiseMsg1Pb {
             version: VERSION,
             a_network_name: network.network_name.clone(),
@@ -808,6 +838,7 @@ impl PeerConn {
             a_conn_id: Some(a_conn_id.into()),
             client_encryption_algorithm: self.my_encrypt_algo.clone(),
             features: vec![LIVENESS_ECHO_FEATURE.to_owned()],
+            mlkem_pubkey: pq_keypair.pubkey_bytes(),
         };
 
         let mut hs = builder
@@ -931,6 +962,22 @@ impl PeerConn {
             PeerConnSessionActionPb::Sync => PeerSessionAction::Sync,
             PeerConnSessionActionPb::Create => PeerSessionAction::Create,
         };
+        let pq_shared = msg2_pb.mlkem_ciphertext.as_deref().and_then(|ct| {
+            if ct.len() != crate::tunnel::encrypt::pq::MLKEM_CIPHERTEXT_LEN {
+                tracing::warn!(len = ct.len(), "ignoring invalid ML-KEM ciphertext length");
+                None
+            } else {
+                pq_keypair.open(ct)
+            }
+        });
+        if pq_shared.is_some() {
+            tracing::info!(?remote_peer_id, "hybrid post-quantum session established");
+        }
+        let root_key = if session_action == PeerSessionAction::Create {
+            root_key.map(|rk| Self::pq_mixed_root_key(rk, pq_shared.as_ref()))
+        } else {
+            root_key
+        };
         let session = self.get_peer_session_store().apply_initiator_action(
             &SessionKey::new(network.network_name.clone(), remote_peer_id),
             session_action,
@@ -1050,6 +1097,16 @@ impl PeerConn {
         };
 
         let algo = self.context.flags().encryption_algorithm.clone();
+        let pq_shared = msg1_pb.mlkem_pubkey.as_deref().and_then(|ek_bytes| {
+            if ek_bytes.len() != crate::tunnel::encrypt::pq::MLKEM_PUBKEY_LEN {
+                tracing::warn!(len = ek_bytes.len(), "ignoring invalid ML-KEM pubkey length");
+                None
+            } else {
+                encapsulate(ek_bytes)
+            }
+        });
+        let pq_ciphertext = pq_shared.as_ref().map(|(ciphertext, _)| ciphertext.clone());
+
         let UpsertResponderSessionReturn {
             session,
             action,
@@ -1063,6 +1120,20 @@ impl PeerConn {
             msg1_pb.client_encryption_algorithm.clone(),
             None,
         )?;
+
+        // Apply the hybrid post-quantum mix to freshly created sessions. The
+        // unmodified root key is still transmitted so the initiator can derive
+        // the same mixed session key locally from its own decapsulation.
+        if matches!(action, PeerSessionAction::Create)
+            && let (Some(pq_shared), Some(root_key)) = (
+                pq_shared.as_ref().map(|(_, shared)| shared),
+                root_key_32,
+            )
+        {
+            let mixed = Self::pq_mixed_root_key(root_key, Some(pq_shared));
+            tracing::info!(?remote_peer_id, "hybrid post-quantum session established");
+            session.sync_root_key(mixed, b_session_generation, initial_epoch, true);
+        }
 
         let b_conn_id = uuid::Uuid::new_v4();
         let msg2_pb = PeerConnNoiseMsg2Pb {
@@ -1081,6 +1152,7 @@ impl PeerConn {
             secret_proof_32,
             server_encryption_algorithm: algo,
             features: vec![LIVENESS_ECHO_FEATURE.to_owned()],
+            mlkem_ciphertext: pq_ciphertext,
         };
         self.send_noise_msg(
             msg2_pb,

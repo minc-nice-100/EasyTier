@@ -88,6 +88,13 @@ message FlagsInConfig {
   // Prefer direct credential peers that already relay to a destination over
   // advertising another direct edge to the same destination.
   bool prefer_peer_relay = 44;
+
+  // Enable hybrid post-quantum key encapsulation (ML-KEM-768) for new peer
+  // connection sessions. The ML-KEM shared secret is mixed into the session
+  // root key so recorded handshakes remain confidential against future
+  // quantum attacks on the Noise X25519 exchange. Transparent to peers that
+  // do not advertise the capability.
+  bool enable_post_quantum = 45;
 }
 
 message RpcDescriptor {
