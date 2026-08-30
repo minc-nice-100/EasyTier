@@ -1534,12 +1534,10 @@ async fn run_main(cli: Cli) -> anyhow::Result<()> {
     if let Some(addr) = cli.rpc_portal_options.http_rpc_portal {
         use crate::{
             instance::config_storage::NativeConfigFileStorage,
-            rpc_service::logger::NativeLoggerControl,
-            web_client::DefaultHooks,
+            rpc_service::logger::NativeLoggerControl, web_client::DefaultHooks,
         };
         use easytier_core::{
-            management::register_management_rpc,
-            rpc::service_registry::ServiceRegistry,
+            management::register_management_rpc, rpc::service_registry::ServiceRegistry,
         };
 
         let registry = Arc::new(ServiceRegistry::new());

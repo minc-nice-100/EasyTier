@@ -2403,6 +2403,7 @@ dependencies = [
  "humansize",
  "humantime-serde",
  "hyper",
+ "hyper-util",
  "igd-next",
  "indoc",
  "kcp-sys",

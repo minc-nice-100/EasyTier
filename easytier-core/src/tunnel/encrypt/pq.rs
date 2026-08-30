@@ -26,8 +26,8 @@ use sha2::Sha256;
 
 #[cfg(feature = "post-quantum")]
 use ml_kem::{
-    Decapsulate, Encapsulate, EncapsulationKey, KeyExport, KeySizeUser, Kem, MlKem768,
-    TryKeyInit, array::Array,
+    Decapsulate, Encapsulate, EncapsulationKey, Kem, KeyExport, KeySizeUser, MlKem768, TryKeyInit,
+    array::Array,
 };
 
 /// ML-KEM-768 encapsulation (public) key length in bytes.
@@ -155,10 +155,7 @@ pub fn encapsulate(ek_bytes: &[u8]) -> Option<(Vec<u8>, [u8; MLKEM_SHARED_SECRET
 /// HKDF-SHA-256 extract-expand: the root key is extracted with the hybrid label
 /// as salt, then a one-block expand produces the mixed session key. Both peers
 /// compute the same value from the same inputs.
-pub fn hybrid_root_key(
-    root_key: [u8; 32],
-    pq_shared: &[u8; MLKEM_SHARED_SECRET_LEN],
-) -> [u8; 32] {
+pub fn hybrid_root_key(root_key: [u8; 32], pq_shared: &[u8; MLKEM_SHARED_SECRET_LEN]) -> [u8; 32] {
     let mut extract = HmacSha256::new_from_slice(HYBRID_INFO).expect("hmac accepts any key");
     extract.update(&root_key);
     let prk = extract.finalize().into_bytes();

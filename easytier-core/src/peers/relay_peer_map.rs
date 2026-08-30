@@ -6,6 +6,9 @@ use quanta::Instant;
 use snow::params::NoiseParams;
 use tokio::sync::{Mutex, OwnedMutexGuard, oneshot};
 
+use crate::tunnel::encrypt::pq::{
+    MLKEM_CIPHERTEXT_LEN, MLKEM_PUBKEY_LEN, PqOffer, encapsulate, hybrid_root_key,
+};
 use crate::{
     config::PeerId,
     foundation::time::{Duration, timeout},
@@ -23,9 +26,6 @@ use crate::{
     },
     proto::peer_rpc::RoutePeerInfo,
     proto::peer_rpc::{PeerConnSessionActionPb, RelayNoiseMsg1Pb, RelayNoiseMsg2Pb},
-};
-use crate::tunnel::encrypt::pq::{
-    MLKEM_CIPHERTEXT_LEN, MLKEM_PUBKEY_LEN, PqOffer, encapsulate, hybrid_root_key,
 };
 
 const RELAY_NOISE_VERSION: u32 = 1;
@@ -492,7 +492,10 @@ impl RelayPeerMap {
             }
         });
         if pq_shared.is_some() {
-            tracing::info!(?dst_peer_id, "hybrid post-quantum relay session established");
+            tracing::info!(
+                ?dst_peer_id,
+                "hybrid post-quantum relay session established"
+            );
         }
         let root_key_bytes = if session_action == PeerSessionAction::Create {
             root_key_bytes.map(|rk| match pq_shared {
@@ -662,7 +665,10 @@ impl RelayPeerMap {
         let key = SessionKey::new(server_network_name.clone(), remote_peer_id);
         let pq_shared = msg1_pb.mlkem_pubkey.as_deref().and_then(|ek_bytes| {
             if ek_bytes.len() != MLKEM_PUBKEY_LEN {
-                tracing::warn!(len = ek_bytes.len(), "ignoring invalid ML-KEM pubkey length");
+                tracing::warn!(
+                    len = ek_bytes.len(),
+                    "ignoring invalid ML-KEM pubkey length"
+                );
                 None
             } else {
                 encapsulate(ek_bytes)
@@ -690,10 +696,16 @@ impl RelayPeerMap {
             )
         {
             let mixed = hybrid_root_key(root_key, pq_shared);
-            tracing::info!(?remote_peer_id, "hybrid post-quantum relay session established");
-            upsert
-                .session
-                .sync_root_key(mixed, upsert.session_generation, upsert.initial_epoch, true);
+            tracing::info!(
+                ?remote_peer_id,
+                "hybrid post-quantum relay session established"
+            );
+            upsert.session.sync_root_key(
+                mixed,
+                upsert.session_generation,
+                upsert.initial_epoch,
+                true,
+            );
         }
 
         let msg2_pb = RelayNoiseMsg2Pb {

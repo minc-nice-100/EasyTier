@@ -17,10 +17,12 @@ use std::{net::SocketAddr, sync::Arc};
 
 use http_body_util::{BodyExt, Full};
 use hyper::{
-    Method, Request, Response, StatusCode, body::{Bytes, Incoming},
+    Method, Request, Response, StatusCode,
+    body::{Bytes, Incoming},
     server::conn::http1,
     service::service_fn,
 };
+use hyper_util::rt::TokioIo;
 use serde::Deserialize;
 
 use crate::proto::rpc_types::controller::BaseController;
@@ -170,10 +172,7 @@ async fn dispatch_rpc(
     Ok(resp)
 }
 
-async fn handle(
-    req: Request<Incoming>,
-    registry: Arc<ServiceRegistry>,
-) -> Response<Full<Bytes>> {
+async fn handle(req: Request<Incoming>, registry: Arc<ServiceRegistry>) -> Response<Full<Bytes>> {
     if req.method() != Method::POST || req.uri().path() != "/rpc" {
         return response_json(StatusCode::NOT_FOUND, "{\"error\":\"not found\"}");
     }
@@ -229,11 +228,12 @@ pub async fn serve(addr: SocketAddr, registry: Arc<ServiceRegistry>) -> anyhow::
         tokio::spawn(async move {
             let service = service_fn(move |req| {
                 let registry = registry.clone();
-                async move {
-                    Ok::<_, std::convert::Infallible>(handle(req, registry).await)
-                }
+                async move { Ok::<_, std::convert::Infallible>(handle(req, registry).await) }
             });
-            if let Err(e) = http1::Builder::new().serve_connection(stream, service).await {
+            if let Err(e) = http1::Builder::new()
+                .serve_connection(TokioIo::new(stream), service)
+                .await
+            {
                 tracing::debug!(?peer, ?e, "HTTP RPC connection closed");
             }
         });
@@ -243,15 +243,16 @@ pub async fn serve(addr: SocketAddr, registry: Arc<ServiceRegistry>) -> anyhow::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use crate::proto::{
         peer_rpc::{
-            GetGlobalPeerMapRequest, GetGlobalPeerMapResponse, PeerCenterRpc,
-            PeerCenterRpcServer, ReportPeersRequest, ReportPeersResponse,
+            GetGlobalPeerMapRequest, GetGlobalPeerMapResponse, PeerCenterRpc, PeerCenterRpcServer,
+            ReportPeersRequest, ReportPeersResponse,
         },
         rpc_types::error,
     };
+    use async_trait::async_trait;
 
+    #[derive(Clone, Debug)]
     struct TestPeerCenter;
 
     #[async_trait]

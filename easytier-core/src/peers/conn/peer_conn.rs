@@ -39,6 +39,7 @@ use crate::peers::{
     send_peer_packet_to_chan,
     traffic_metrics::data_packet_payload_len,
 };
+use crate::tunnel::encrypt::pq::{MLKEM_SHARED_SECRET_LEN, PqOffer, encapsulate, hybrid_root_key};
 use crate::{
     config::PeerId,
     packet::{PacketType, ZCPacket},
@@ -59,7 +60,6 @@ use crate::{
         stats::{Throughput, WindowLatency},
     },
 };
-use crate::tunnel::encrypt::pq::{MLKEM_SHARED_SECRET_LEN, PqOffer, encapsulate, hybrid_root_key};
 
 pub type PeerConnId = uuid::Uuid;
 
@@ -1099,7 +1099,10 @@ impl PeerConn {
         let algo = self.context.flags().encryption_algorithm.clone();
         let pq_shared = msg1_pb.mlkem_pubkey.as_deref().and_then(|ek_bytes| {
             if ek_bytes.len() != crate::tunnel::encrypt::pq::MLKEM_PUBKEY_LEN {
-                tracing::warn!(len = ek_bytes.len(), "ignoring invalid ML-KEM pubkey length");
+                tracing::warn!(
+                    len = ek_bytes.len(),
+                    "ignoring invalid ML-KEM pubkey length"
+                );
                 None
             } else {
                 encapsulate(ek_bytes)
@@ -1125,10 +1128,8 @@ impl PeerConn {
         // unmodified root key is still transmitted so the initiator can derive
         // the same mixed session key locally from its own decapsulation.
         if matches!(action, PeerSessionAction::Create)
-            && let (Some(pq_shared), Some(root_key)) = (
-                pq_shared.as_ref().map(|(_, shared)| shared),
-                root_key_32,
-            )
+            && let (Some(pq_shared), Some(root_key)) =
+                (pq_shared.as_ref().map(|(_, shared)| shared), root_key_32)
         {
             let mixed = Self::pq_mixed_root_key(root_key, Some(pq_shared));
             tracing::info!(?remote_peer_id, "hybrid post-quantum session established");
