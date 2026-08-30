@@ -75,91 +75,91 @@ async fn dispatch_rpc(
     let resp = match service_name.as_str() {
         "api.manage.WebClientService" => match_service!(
             rpc,
-            easytier::proto::api::manage::WebClientServiceClientFactory<BaseController>,
+            crate::proto::api::manage::WebClientServiceClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.PeerManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::PeerManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::PeerManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.PeerCenterManageRpcService" => match_service!(
             rpc,
-            easytier::proto::peer_rpc::PeerCenterRpcClientFactory<BaseController>,
+            crate::proto::peer_rpc::PeerCenterRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.ConnectorManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::ConnectorManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::ConnectorManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.MappedListenerManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::MappedListenerManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::MappedListenerManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.VpnPortalRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::VpnPortalRpcClientFactory<BaseController>,
+            crate::proto::api::instance::VpnPortalRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.TcpProxyRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::TcpProxyRpcClientFactory<BaseController>,
+            crate::proto::api::instance::TcpProxyRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.AclManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::AclManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::AclManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.PortForwardManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::PortForwardManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::PortForwardManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.StatsRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::StatsRpcClientFactory<BaseController>,
+            crate::proto::api::instance::StatsRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.instance.CredentialManageRpcService" => match_service!(
             rpc,
-            easytier::proto::api::instance::CredentialManageRpcClientFactory<BaseController>,
+            crate::proto::api::instance::CredentialManageRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.logger.LoggerRpcService" => match_service!(
             rpc,
-            easytier::proto::api::logger::LoggerRpcClientFactory<BaseController>,
+            crate::proto::api::logger::LoggerRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
         ),
         "api.config.ConfigRpcService" => match_service!(
             rpc,
-            easytier::proto::api::config::ConfigRpcClientFactory<BaseController>,
+            crate::proto::api::config::ConfigRpcClientFactory<BaseController>,
             &method_name,
             payload,
             scope.as_ref()
