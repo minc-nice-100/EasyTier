@@ -72,6 +72,7 @@ pub fn gen_default_flags() -> Flags {
         prefer_peer_relay: false,
         enable_udp_broadcast_relay: false,
         socket_mark: None,
+        enable_post_quantum: cfg!(feature = "post-quantum"),
     }
 }
 
@@ -166,6 +167,7 @@ define_flags_diff! {
         prefer_peer_relay,
         enable_udp_broadcast_relay,
         socket_mark,
+        enable_post_quantum,
     ],
     u64s: [foreign_relay_bps_limit, instance_recv_bps_limit],
     enums: [data_compress_algo]

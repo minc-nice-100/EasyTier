@@ -508,6 +508,15 @@ struct NetworkOptions {
 
     #[arg(
         long,
+        env = "ET_ENABLE_POST_QUANTUM",
+        help = t!("core_clap.enable_post_quantum").to_string(),
+        num_args = 0..=1,
+        default_missing_value = "true"
+    )]
+    enable_post_quantum: Option<bool>,
+
+    #[arg(
+        long,
         env = "ET_ENABLE_UDP_BROADCAST_RELAY",
         help = t!("core_clap.enable_udp_broadcast_relay").to_string(),
         num_args = 0..=1,
@@ -1294,6 +1303,9 @@ impl NetworkOptions {
             .disable_sym_hole_punching
             .unwrap_or(f.disable_sym_hole_punching);
         f.disable_upnp = self.disable_upnp.unwrap_or(f.disable_upnp);
+        if let Some(v) = self.enable_post_quantum {
+            f.enable_post_quantum = v;
+        }
         f.enable_udp_broadcast_relay = self
             .enable_udp_broadcast_relay
             .unwrap_or(f.enable_udp_broadcast_relay);

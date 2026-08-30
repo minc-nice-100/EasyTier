@@ -82,6 +82,7 @@ zstd = { version = "0.13", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 chacha20poly1305 = { version = "0.10.1", optional = true }
 openssl = { version = "0.10", optional = true, features = ["vendored"] }
+ml-kem = { version = "0.3", features = ["getrandom"], optional = true }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom-02 = { package = "getrandom", version = "0.2.15", features = ["js"] }
@@ -149,6 +150,7 @@ proxy-smoltcp-stack = [
 test-utils = []
 tracing-log = ["tracing/log"]
 zstd = ["dep:zstd"]
+post-quantum = ["dep:ml-kem"]
 
 [target.'cfg(not(target_os = "wasi"))'.dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread"] }
