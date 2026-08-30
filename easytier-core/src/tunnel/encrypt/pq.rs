@@ -26,8 +26,8 @@ use sha2::Sha256;
 
 #[cfg(feature = "post-quantum")]
 use ml_kem::{
-    Decapsulate, Encapsulate, EncapsulationKey, Key, KeyExport, Kem, MlKem768, TryKeyInit,
-    array::Array,
+    Decapsulate, Encapsulate, EncapsulationKey, KeyExport, KeySizeUser, Kem, MlKem768,
+    TryKeyInit, array::Array,
 };
 
 /// ML-KEM-768 encapsulation (public) key length in bytes.
@@ -135,8 +135,9 @@ pub fn encapsulate(ek_bytes: &[u8]) -> Option<(Vec<u8>, [u8; MLKEM_SHARED_SECRET
         if ek_bytes.len() != MLKEM_PUBKEY_LEN {
             return None;
         }
-        let key: Key<EncapsulationKey<MlKem768>> = Array::from_slice(ek_bytes).clone();
-        let ek = EncapsulationKey::new(&key).ok()?;
+        type PqEk = EncapsulationKey<MlKem768>;
+        let key = Array::<u8, <PqEk as KeySizeUser>::KeySize>::from_slice(ek_bytes).clone();
+        let ek = PqEk::new(&key).ok()?;
         let (ciphertext, shared) = ek.encapsulate();
         let mut out = [0u8; MLKEM_SHARED_SECRET_LEN];
         out.copy_from_slice(&shared);
