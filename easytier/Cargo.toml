@@ -109,6 +109,11 @@ forwarded-header-value = { version = "0.1.1", optional = true }
 http = { version = "1", default-features = false, features = [
     "std",
 ], optional = true }
+hyper = { version = "1", default-features = false, features = [
+    "server",
+    "http1",
+], optional = true }
+http-body-util = { version = "0.1", optional = true }
 rcgen = { version = "0.12.1", optional = true }
 tokio-rustls = { version = "0.26", default-features = false, optional = true }
 
@@ -330,6 +335,7 @@ default = [
     "linux-netlink",
     "tcp-hole-punch",
     "post-quantum",
+    "http-rpc",
 ]
 full = [
     "websocket",
@@ -351,6 +357,7 @@ full = [
     "extended-services",
     "tcp-hole-punch",
     "post-quantum",
+    "http-rpc",
 ]
 wireguard = ["vpn-portal", "dep:boringtun", "dep:hkdf", "dep:sha2", "ring-crypto", "easytier-proto/wireguard"]
 quic = ["wrapped-transport", "easytier-core/proxy-packet", "dep:quinn", "dep:quinn-proto", "dep:seahash", "dep:rustls", "easytier-proto/quic"]
@@ -402,6 +409,7 @@ faketcp = [
 ]
 zstd = ["easytier-core/zstd", "easytier-proto/zstd"]
 post-quantum = ["easytier-core/post-quantum"]
+http-rpc = ["dep:hyper", "dep:http-body-util", "dep:http", "management"]
 upnp = ["dep:igd-next", "dep:natpmp"]
 endpoint-discovery = [
     "dns-resolver",

@@ -1,6 +1,8 @@
 pub mod api;
 #[cfg(feature = "management")]
 pub mod logger;
+#[cfg(feature = "http-rpc")]
+pub mod http;
 #[cfg(feature = "management")]
 pub use easytier_core::management::remote_client;
 

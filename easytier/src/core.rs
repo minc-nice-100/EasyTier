@@ -821,6 +821,13 @@ struct RpcPortalOptions {
 
     #[arg(
         long,
+        env = "ET_HTTP_RPC_PORTAL",
+        help = t!("core_clap.http_rpc_portal").to_string(),
+    )]
+    http_rpc_portal: Option<SocketAddr>,
+
+    #[arg(
+        long,
         env = "ET_RPC_PORTAL_WHITELIST",
         value_delimiter = ',',
         help = t!("core_clap.rpc_portal_whitelist").to_string(),
@@ -1520,6 +1527,37 @@ async fn run_main(cli: Cli) -> anyhow::Result<()> {
     )?
     .serve()
     .await?;
+
+    // Optional plain-HTTP JSON-RPC control portal. Shares the same management
+    // service registry surface as the tunnel RPC portal.
+    #[cfg(feature = "http-rpc")]
+    if let Some(addr) = cli.rpc_portal_options.http_rpc_portal {
+        use crate::{
+            instance::config_storage::NativeConfigFileStorage,
+            rpc_service::logger::NativeLoggerControl,
+            web_client::DefaultHooks,
+        };
+        use easytier_core::{
+            management::register_management_rpc,
+            rpc::service_registry::ServiceRegistry,
+        };
+
+        let registry = Arc::new(ServiceRegistry::new());
+        register_management_rpc(
+            manager.clone(),
+            &registry,
+            Arc::new(DefaultHooks),
+            Arc::new(NativeConfigFileStorage),
+            Arc::new(NativeLoggerControl),
+        );
+        if let Err(e) = crate::rpc_service::http::serve(addr, registry).await {
+            tracing::error!(?addr, ?e, "HTTP RPC portal failed");
+        }
+    }
+    #[cfg(not(feature = "http-rpc"))]
+    if cli.rpc_portal_options.http_rpc_portal.is_some() {
+        tracing::warn!("--http-rpc-portal requires the http-rpc build feature");
+    }
 
     let _web_client = if let Some(config_server_url_s) = cli.config_server.as_ref() {
         let wc = web_client::run_web_client(

@@ -67,6 +67,9 @@ core_clap:
   rpc_portal:
     en: "rpc portal address to listen for management. 0 means random port, 12345 means listen on 12345 of localhost, 0.0.0.0:12345 means listen on 12345 of all interfaces. default is 0 and will try 15888 first"
     zh-CN: "用于管理的RPC门户地址。0表示随机端口，12345表示在localhost的12345上监听，0.0.0.0:12345表示在所有接口的12345上监听。默认是0，首先尝试15888"
+  http_rpc_portal:
+    en: "optional plain HTTP JSON-RPC control portal address (e.g. 127.0.0.1:15887). Exposes the same management RPC over HTTP POST /rpc instead of the tunnel transport"
+    zh-CN: "可选的纯 HTTP JSON-RPC 控制门户地址（例如 127.0.0.1:15887）。通过 HTTP POST /rpc 暴露与管理隧道传输相同的管理 RPC"
   rpc_portal_whitelist:
     en: "rpc portal whitelist, only allow these addresses to access rpc portal, e.g.: 127.0.0.1,127.0.0.0/8,::1/128"
     zh-CN: "RPC门户白名单，仅允许这些地址访问RPC门户，例如：127.0.0.1/32,127.0.0.0/8,::1/128"
